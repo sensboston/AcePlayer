@@ -63,19 +63,20 @@ The **auto-live** control sets how much accumulated stall time is tolerated befo
 the live edge. Keep in mind that the Ace engine's own *live buffer* setting is the real floor on
 latency: the player cannot be fresher than the engine serves.
 
-## How it works (short version)
+## The interface
 
-```
-Ace engine (HTTP :6878) --MPEG-TS--> FFmpeg demux + decode (H.264/HEVC, AAC/MP2/AC3)
-                                        |- video -> bwdif deinterlace -> BGRA -> frame buffer
-                                        |                                  |
-                                        |                     clock-driven presenter (WPF)
-                                        |- audio -> resample -> PCM -> NAudio (the real-time clock)
-```
+Everything lives in one auto-hiding top bar. The numbers below are labelled on the screenshot.
 
-The presenter keeps a small cushion and plays by a wall-clock. Accumulated freeze time is measured
-as "how far behind live we are", and crossing the threshold triggers a clean catch-up to the live
-edge on the same connection, with no reconnect and no stutter.
+![AcePlayer controls](docs/ui.png)
+
+1. **Address bar** for a content-id, an `acestream://` link, a plain URL, or a local file
+2. **Clear** the address bar
+3. **Play** / restart the current source
+4. **Live**: jump to the live edge on demand
+5. **Distance behind live** (the accumulated lag indicator)
+6. **Auto catch-up threshold**: how far it may drift before jumping back to live (Off, or 1 to 8 s)
+7. **Register** AcePlayer as the `acestream://` handler
+8. **Fullscreen**
 
 ## Build
 
