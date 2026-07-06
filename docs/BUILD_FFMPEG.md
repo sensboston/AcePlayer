@@ -5,7 +5,7 @@ H.264/HEVC/MPEG‑2 video, AAC/MP2/MP3/AC3/E‑AC3 audio, `mpegts`/`hls` demuxer
 deinterlacer, and `http`/`tls` protocols. All the DLLs together are ~4 MB (vs ~130 MB for a full
 build). You only need to rebuild them to change the FFmpeg version or add codecs.
 
-From an MSYS2 / Git Bash shell (no compiler is required up front — the script fetches one):
+From an MSYS2 / Git Bash shell (no compiler is required up front, the script fetches one):
 
 ```sh
 mkdir -p /c/build && cd /c/build

@@ -1,0 +1,47 @@
+name: Build and Release AcePlayer
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build solution (Release)
+      shell: powershell
+      run: |
+        msbuild AcePlayer.sln -restore -t:Rebuild -p:Configuration=Release -p:Platform=x64 -m
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    - name: Collect portable exe
+      id: out
+      shell: powershell
+      run: |
+        $root = $Env:GITHUB_WORKSPACE
+
+        $exe = Get-ChildItem $root -Recurse -Filter 'AcePlayer.exe' |
+               Where-Object { $_.FullName -like '*\bin\*Release*' } |
+               Sort-Object LastWriteTime -Descending |
+               Select-Object -First 1 -ExpandProperty FullName
+        if (-not $exe) { throw 'AcePlayer.exe not found' }
+
+        Write-Host "Exe: $exe ($([math]::Round((Get-Item $exe).Length/1MB,1)) MB)"
+        "exe=$exe" | Out-File $env:GITHUB_OUTPUT -Append
+
+    - name: Upload release asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ steps.out.outputs.exe }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
