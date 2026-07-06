@@ -1,0 +1,46 @@
+# ---- Build output ----
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+*.dll.config
+*.exe
+*.pdb
+
+# ---- Visual Studio / Rider ----
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# ---- NuGet ----
+packages/
+*.nupkg
+project.lock.json
+project.assets.json
+
+# ---- Fody (auto-generated schema) ----
+FodyWeavers.xsd
+
+# ---- Local FFmpeg build output (recipe lives in docs/BUILD_FFMPEG.md) ----
+/ffmpeg-slim/
+
+# ---- Project-local notes not meant for the repo ----
+CLAUDE.md
+aceplayer.ini
+
+# ---- OS ----
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Keep the embedded native FFmpeg DLLs and the app icon (needed to build):
+!AcePlayer/native/
+!AcePlayer/native/*.dll
+!AcePlayer/icon.ico
