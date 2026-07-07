@@ -1,0 +1,63 @@
+<UserControl x:Class="AcePlayer.VolumeControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="Spk" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#F0F0F0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Vertical" HorizontalAlignment="Right">
+        <TextBlock x:Name="PctText" Text="100%" Foreground="#E8FFFFFF" FontSize="11"
+                   HorizontalAlignment="Right" Margin="0,0,8,1" IsHitTestVisible="False"/>
+        <StackPanel Orientation="Horizontal">
+            <Button x:Name="Speaker" Style="{StaticResource Spk}" Content="&#xE767;"
+                    ToolTip="Mute / unmute" Click="OnSpeaker"/>
+            <Grid x:Name="Wedge" Width="92" Height="28" Margin="2,0,6,0" Cursor="Hand"
+                  Background="Transparent" ToolTip="Volume"
+                  MouseLeftButtonDown="OnWedgeDown" MouseMove="OnWedgeMove" MouseLeftButtonUp="OnWedgeUp">
+                <Path Data="M0,25 L86,6 L86,25 Z" Fill="#30FFFFFF"/>
+                <Path x:Name="FgTri" Data="M0,25 L86,6 L86,25 Z">
+                    <Path.Fill>
+                        <!-- smooth green (low) -> yellow -> red (high) across 0..200%; 100% is at 0.5 -->
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#2E9E44" Offset="0"/>
+                            <GradientStop Color="#5FBE43" Offset="0.38"/>
+                            <GradientStop Color="#9BCB39" Offset="0.5"/>
+                            <GradientStop Color="#EFC500" Offset="0.68"/>
+                            <GradientStop Color="#F08000" Offset="0.85"/>
+                            <GradientStop Color="#E0342A" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Path.Fill>
+                    <Path.Clip>
+                        <RectangleGeometry x:Name="FgClip" Rect="0,0,43,28"/>
+                    </Path.Clip>
+                </Path>
+                <!-- 100% reference mark -->
+                <Rectangle Width="1" Height="18" Fill="#66FFFFFF" HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom" Margin="43,0,0,5"/>
+            </Grid>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

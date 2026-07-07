@@ -116,7 +116,7 @@ namespace AcePlayer.Decoding
                 {
                     ConnResult result;
                     try { result = RunOneConnection(pkt, frame); }
-                    catch (Exception ex) { Fail("Исключение в декодере: " + ex.Message); return; }
+                    catch (Exception ex) { Fail("Decoder exception: " + ex.Message); return; }
 
                     if (!_running || result == ConnResult.Stopped) break;
                     if (result == ConnResult.EndedClean) { Ended?.Invoke(); break; }
@@ -124,7 +124,7 @@ namespace AcePlayer.Decoding
 
                     // Read error / stall: reconnect with a short interruptible backoff.
                     if (_connReads > 0) attempts = 0;            // stream had been flowing -> fresh budget
-                    if (++attempts > MaxReconnect) { Fail("Поток прервался и не восстановился."); break; }
+                    if (++attempts > MaxReconnect) { Fail("The stream was interrupted and did not recover."); break; }
                     Reconnecting?.Invoke(attempts);
                     for (int i = 0; i < 12 && _running; i++) Thread.Sleep(100);   // ~1.2s
                 }
@@ -202,7 +202,7 @@ namespace AcePlayer.Decoding
                     }
                 }
                 if (aIdx >= 0) aCtx = OpenCodec(fmt, aIdx);
-                if (vIdx >= 0 && vCtx == null) { Fail("Не удалось открыть видеокодек."); return ConnResult.Stopped; }
+                if (vIdx >= 0 && vCtx == null) { Fail("Could not open the video codec."); return ConnResult.Stopped; }
 
                 while (_running)
                 {

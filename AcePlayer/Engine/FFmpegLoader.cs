@@ -43,7 +43,7 @@ namespace AcePlayer.Engine
                 string root = ExtractEmbedded() ?? ProbeDisk();
                 if (root == null)
                     throw new DllNotFoundException(
-                        "Не найдены нативные библиотеки FFmpeg 6.x (avformat-60.dll и др.).");
+                        "FFmpeg 6.x native libraries were not found (avformat-60.dll and others).");
 
                 // LoadLibrary(fullpath) resolves a DLL's own imports (e.g. avutil -> libwinpthread)
                 // using the exe's directory, not the DLL's. Add our folder to the search path so

@@ -24,6 +24,10 @@ namespace AcePlayer.Decoding
 
         public WaveFormat WaveFormat { get; }
 
+        /// <summary>Output gain (1.0 = 100%, up to ~1.25 for boost). Applied on read.</summary>
+        public volatile float VolumeF = 1.0f;
+        public double Volume { get => VolumeF; set => VolumeF = (float)value; }
+
         public PcmQueue(WaveFormat format, int capacityBytes)
         {
             WaveFormat = format;
@@ -78,6 +82,21 @@ namespace AcePlayer.Decoding
                 }
                 _count -= read;
                 if (read > 0) Monitor.PulseAll(_gate);
+
+                // Apply player volume / boost (with clipping guard) to the real samples.
+                double vol = Volume;
+                if (read > 0 && Math.Abs(vol - 1.0) > 0.001)
+                {
+                    for (int i = offset; i < offset + read; i += 2)
+                    {
+                        int s = (short)(destination[i] | (destination[i + 1] << 8));
+                        s = (int)(s * vol);
+                        if (s > short.MaxValue) s = short.MaxValue;
+                        else if (s < short.MinValue) s = short.MinValue;
+                        destination[i] = (byte)s;
+                        destination[i + 1] = (byte)(s >> 8);
+                    }
+                }
 
                 // Pad with silence so the audio graph keeps a steady clock on underflow.
                 if (read < count)

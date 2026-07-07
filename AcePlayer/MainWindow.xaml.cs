@@ -59,6 +59,9 @@ namespace AcePlayer
 
             SelectThreshold(_settings.ThresholdSeconds);
 
+            Volume.Init(_settings.Volume, _settings.Muted);
+            Volume.Changed += OnVolumeChanged;
+
             var args = Environment.GetCommandLineArgs();
             if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
             {
@@ -97,7 +100,34 @@ namespace AcePlayer
 
         // ---- source input ----
 
-        private async void OnPlayClick(object sender, RoutedEventArgs e) => await PlayAsync(SourceBox.Text);
+        private bool _playbackActive;
+
+        private void SetPlaybackActive(bool active)
+        {
+            _playbackActive = active;
+            PlayButton.Content = active ? "■ Stop" : "▶ Play";
+        }
+
+        private async void OnPlayClick(object sender, RoutedEventArgs e)
+        {
+            if (_playbackActive)
+            {
+                TeardownPlayback();
+                ShowCenter("Stopped.");
+            }
+            else
+            {
+                await PlayAsync(SourceBox.Text);
+            }
+        }
+
+        private void OnVolumeChanged()
+        {
+            if (_pcm != null) _pcm.Volume = Volume.EffectiveVolume;
+            _settings.Volume = Volume.Volume;
+            _settings.Muted = Volume.Muted;
+            _settings.Save();
+        }
 
         private async void OnSourceKeyDown(object sender, KeyEventArgs e)
         {
@@ -150,13 +180,14 @@ namespace AcePlayer
             _settings.Save();
 
             TeardownPlayback();
+            SetPlaybackActive(true);      // button becomes Stop for the whole open/play lifetime
             _playCts = new CancellationTokenSource();
             var token = _playCts.Token;
             ShowCenter("Resolving source…");
 
             AceStreamHandle handle;
             try { handle = await _engine.ResolveAsync(source); }
-            catch (Exception ex) { ShowCenter("Error: " + ex.Message); return; }
+            catch (Exception ex) { ShowCenter("Error: " + ex.Message); SetPlaybackActive(false); return; }
 
             if (!handle.IsDirect)
             {
@@ -187,10 +218,12 @@ namespace AcePlayer
                 new NAudio.Wave.WaveFormat(MediaDecoder.AudioSampleRate, 16, MediaDecoder.AudioChannels),
                 capacityBytes: bytesPerSecond / 2); // ~500 ms
 
+            _pcm.Volume = Volume.EffectiveVolume;
+
             _decoder = new MediaDecoder(handle.PlaybackUrl, _frame, _pcm, deinterlace: _deinterlaceEnabled);
             _decoder.AutoLive = false;     // live-edge is driven here by accumulated-lag threshold
-            _decoder.Failed += msg => Dispatcher.Invoke(() => ShowCenter("Error: " + msg));
-            _decoder.Ended += () => Dispatcher.Invoke(() => ShowCenter("Stream ended."));
+            _decoder.Failed += msg => Dispatcher.Invoke(() => { ShowCenter("Error: " + msg); SetPlaybackActive(false); });
+            _decoder.Ended += () => Dispatcher.Invoke(() => { ShowCenter("Stream ended."); SetPlaybackActive(false); });
             _decoder.Reconnecting += n => Dispatcher.Invoke(() => ShowCenter($"Reconnecting ({n})…"));
             _decoder.VideoSizeChanged += (w, h) => Dispatcher.Invoke(() => { HideCenter(); ResizeToVideo(w, h); });
 
@@ -239,6 +272,7 @@ namespace AcePlayer
 
         private void TeardownPlayback()
         {
+            SetPlaybackActive(false);
             KeepAwake(false);
             try { _playCts?.Cancel(); } catch { }
             try { _playCts?.Dispose(); } catch { }
@@ -303,7 +337,7 @@ namespace AcePlayer
 
         private void OnIdleTick(object sender, EventArgs e)
         {
-            if (TopBar.IsMouseOver || SourceBox.IsKeyboardFocused) return;
+            if (TopBar.IsMouseOver || Volume.IsMouseOver || SourceBox.IsKeyboardFocused) return;
             HideControls();
         }
 
@@ -316,6 +350,7 @@ namespace AcePlayer
             _controlsVisible = true;
             Fade(TopBar, 1.0);
             Fade(StatsText, 1.0);
+            Fade(Volume, 1.0);
         }
 
         private void HideControls()
@@ -324,6 +359,7 @@ namespace AcePlayer
             _controlsVisible = false;
             Fade(TopBar, 0.0);
             Fade(StatsText, 0.0);
+            Fade(Volume, 0.0);
             if (_fullscreen) Cursor = Cursors.None;
         }
 

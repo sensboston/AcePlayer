@@ -9,6 +9,8 @@ namespace AcePlayer
     {
         public string Url = "";
         public double ThresholdSeconds = 4.0;   // double.PositiveInfinity = "off" (never auto-jump)
+        public double Volume = 1.0;             // 0..2
+        public bool Muted = false;
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aceplayer.ini");
@@ -33,6 +35,10 @@ namespace AcePlayer
                         else if (double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var t))
                             s.ThresholdSeconds = t;
                     }
+                    else if (k == "volume" && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var vv))
+                        s.Volume = vv;
+                    else if (k == "muted")
+                        s.Muted = v == "1" || v.Equals("true", StringComparison.OrdinalIgnoreCase);
                 }
             }
             catch { }
@@ -46,7 +52,10 @@ namespace AcePlayer
                 string thr = double.IsInfinity(ThresholdSeconds)
                     ? "off"
                     : ThresholdSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                File.WriteAllText(FilePath, $"url={Url}{Environment.NewLine}threshold={thr}{Environment.NewLine}");
+                string vol = Volume.ToString("0.###", CultureInfo.InvariantCulture);
+                File.WriteAllText(FilePath,
+                    $"url={Url}{Environment.NewLine}threshold={thr}{Environment.NewLine}" +
+                    $"volume={vol}{Environment.NewLine}muted={(Muted ? "1" : "0")}{Environment.NewLine}");
             }
             catch { }
         }
