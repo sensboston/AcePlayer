@@ -39,9 +39,18 @@ namespace AcePlayer
             new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         private bool _controlsVisible = true;
 
+        // Keep the display and machine awake while playing.
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern uint SetThreadExecutionState(uint esFlags);
+        private const uint ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x00000001, ES_DISPLAY_REQUIRED = 0x00000002;
+        private void KeepAwake(bool on) =>
+            SetThreadExecutionState(on ? (ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED) : ES_CONTINUOUS);
+
         public MainWindow()
         {
             InitializeComponent();
+            var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            Title = $"AcePlayer {v.Major}.{v.Minor}.{v.Build}";
             _stats.Tick += OnStatsTick;
             _stats.Start();
             _idleTimer.Tick += OnIdleTick;
@@ -191,6 +200,7 @@ namespace AcePlayer
             _autoSized = false;
             Video.Attach(_frame, _clock);
             _decoder.Start();
+            KeepAwake(true);   // no screensaver / sleep while playing
 
             // The ad-supported Ace engine opens a betting-ad browser window on stream start; close it.
             if (!handle.IsDirect)
@@ -229,6 +239,7 @@ namespace AcePlayer
 
         private void TeardownPlayback()
         {
+            KeepAwake(false);
             try { _playCts?.Cancel(); } catch { }
             try { _playCts?.Dispose(); } catch { }
             _playCts = null;
