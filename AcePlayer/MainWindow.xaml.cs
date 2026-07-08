@@ -185,6 +185,10 @@ namespace AcePlayer
             var token = _playCts.Token;
             ShowCenter("Resolving source…");
 
+            // The ad opens in the default browser the moment the engine starts (getstream). Snapshot
+            // the browser windows now, before that, so the ad counts as the new window to close.
+            Engine.AdWindowCloser.CloseFor(8);
+
             AceStreamHandle handle;
             try { handle = await _engine.ResolveAsync(source); }
             catch (Exception ex) { ShowCenter("Error: " + ex.Message); SetPlaybackActive(false); return; }
@@ -235,9 +239,6 @@ namespace AcePlayer
             _decoder.Start();
             KeepAwake(true);   // no screensaver / sleep while playing
 
-            // The ad-supported Ace engine opens a betting-ad browser window on stream start; close it.
-            if (!handle.IsDirect)
-                Engine.AdWindowCloser.CloseFor(8);
         }
 
         /// <summary>Fit the window to the video's aspect ratio (once per playback, windowed only).</summary>
@@ -291,9 +292,35 @@ namespace AcePlayer
 
         // ---- fullscreen ----
 
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetDoubleClickTime();
+        private DispatcherTimer _clickTimer;
+
         private void OnVideoMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) ToggleFullscreen();
+            if (e.ClickCount == 2)
+            {
+                _clickTimer?.Stop();          // cancel the pending single-click action
+                ToggleFullscreen();
+                return;
+            }
+
+            // A lone click toggles the controls. Defer it by the system double-click time so that the
+            // first click of a double-click (fullscreen) does not also flip the controls.
+            if (_clickTimer == null)
+            {
+                _clickTimer = new DispatcherTimer
+                { Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime() + 20) };
+                _clickTimer.Tick += (s, ev) => { _clickTimer.Stop(); ToggleControls(); };
+            }
+            _clickTimer.Stop();
+            _clickTimer.Start();
+        }
+
+        private void ToggleControls()
+        {
+            if (_controlsVisible) HideControls();
+            else ShowControls();
         }
 
         private void OnFullscreenClick(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -337,7 +364,7 @@ namespace AcePlayer
 
         private void OnIdleTick(object sender, EventArgs e)
         {
-            if (TopBar.IsMouseOver || Volume.IsMouseOver || SourceBox.IsKeyboardFocused) return;
+            if (TopBar.IsMouseOver || BottomBar.IsMouseOver || SourceBox.IsKeyboardFocused) return;
             HideControls();
         }
 
@@ -349,8 +376,7 @@ namespace AcePlayer
             if (_controlsVisible) return;
             _controlsVisible = true;
             Fade(TopBar, 1.0);
-            Fade(StatsText, 1.0);
-            Fade(Volume, 1.0);
+            Fade(BottomBar, 1.0);
         }
 
         private void HideControls()
@@ -358,8 +384,7 @@ namespace AcePlayer
             if (!_controlsVisible) return;
             _controlsVisible = false;
             Fade(TopBar, 0.0);
-            Fade(StatsText, 0.0);
-            Fade(Volume, 0.0);
+            Fade(BottomBar, 0.0);
             if (_fullscreen) Cursor = Cursors.None;
         }
 

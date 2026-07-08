@@ -1,33 +1,26 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using System.Windows.Automation;
 
 namespace AcePlayer.Engine
 {
     /// <summary>
-    /// The (ad-supported) Ace Stream engine pops open a browser window with a betting ad when a
-    /// stream starts. This watches top-level browser windows for a short while after playback begins
-    /// and closes the ad window — matched either by a title marker or, more robustly (the ad domain
-    /// rotates), by its page content ("Silence is golden") via UI Automation. Scoped to browser
-    /// window classes and specific markers so it never touches unrelated windows.
+    /// The (ad-supported) Ace Stream engine opens a betting-ad page in the user's default browser when
+    /// a stream starts. The ad's title, domain and even the browser vary (it follows whatever the
+    /// default browser is), so instead of matching brands we snapshot the existing browser windows just
+    /// before the stream starts and close the first NEW browser window that appears right after — that
+    /// is the ad. Browser- and brand-agnostic; only ever targets a window born in the watch window.
     /// </summary>
     internal static class AdWindowCloser
     {
-        // Lowercased substrings identifying the ad by the browser window title (URL-derived).
-        private static readonly string[] TitleMarkers =
-        {
-            "parimatch", "pmwin", "1xbet", "melbet", "betwinner", "1win", "mostbet", "silence is golden",
-        };
-
-        // Distinctive page-content strings (matched via UI Automation, domain-independent).
-        private static readonly string[] ContentMarkers =
-        {
-            "Silence is golden",
-        };
+        // Top-level window classes of the browsers that could host the ad.
+        private static bool IsBrowserWindowClass(string cls) =>
+            cls == "Chrome_WidgetWin_1"   // Chrome / Edge / any Chromium (incl. an embedded CEF)
+            || cls == "MozillaWindowClass"; // Firefox
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -38,75 +31,75 @@ namespace AcePlayer.Engine
         [DllImport("user32.dll")] private static extern IntPtr PostMessageW(IntPtr h, uint msg, IntPtr w, IntPtr l);
 
         private const uint WM_CLOSE = 0x0010;
-        private static bool _logCandidates;
 
-        /// <summary>Watch for and close ad windows for a short window after a stream starts.</summary>
+        /// <summary>
+        /// Snapshot the current browser windows and, on a background thread, close the first new browser
+        /// window that appears within <paramref name="seconds"/>. Call this just BEFORE the engine
+        /// starts the stream (the ad opens on getstream), so the ad counts as "new".
+        /// </summary>
         public static void CloseFor(double seconds = 8.0)
         {
-            _logCandidates = true;   // dump seen browser titles once, to help tune markers
+            var baseline = SnapshotBrowserWindows();   // taken now, before the ad can open
+
             var t = new Thread(() =>
             {
                 var sw = Stopwatch.StartNew();
                 while (sw.Elapsed.TotalSeconds < seconds)
                 {
-                    try { Scan(); } catch { }
-                    Thread.Sleep(500);
+                    IntPtr adWin = FindNewBrowserWindow(baseline);
+                    if (adWin != IntPtr.Zero)
+                    {
+                        PostMessageW(adWin, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                        Log($"closed new browser window: [{TitleOf(adWin)}]");
+                        return;                        // the ad is a single window -> done
+                    }
+                    Thread.Sleep(120);
                 }
+                Log("no new browser window appeared");
             })
             { IsBackground = true, Name = "AdWindowCloser" };
             t.Start();
         }
 
-        private static void Scan()
+        private static HashSet<IntPtr> SnapshotBrowserWindows()
         {
-            bool logThisPass = _logCandidates;
-            _logCandidates = false;
-
-            EnumWindows((hWnd, _) =>
+            var set = new HashSet<IntPtr>();
+            EnumWindows((h, _) =>
             {
-                if (!IsWindowVisible(hWnd)) return true;
+                if (IsWindowVisible(h) && IsBrowserWindowClass(ClassOf(h))) set.Add(h);
+                return true;
+            }, IntPtr.Zero);
+            return set;
+        }
 
-                var cls = new StringBuilder(64);
-                GetClassNameW(hWnd, cls, cls.Capacity);
-                if (cls.ToString() != "Chrome_WidgetWin_1") return true;   // Chrome / Edge / Chromium
-
-                var titleSb = new StringBuilder(512);
-                GetWindowTextW(hWnd, titleSb, titleSb.Capacity);
-                string title = titleSb.ToString();
-                string tl = title.ToLowerInvariant();
-                if (logThisPass) Log("candidate: " + title);
-
-                bool match = false;
-                foreach (var m in TitleMarkers)
-                    if (tl.Contains(m)) { match = true; break; }
-
-                if (!match && MatchesContent(hWnd))
-                    match = true;
-
-                if (match)
+        private static IntPtr FindNewBrowserWindow(HashSet<IntPtr> baseline)
+        {
+            IntPtr found = IntPtr.Zero;
+            EnumWindows((h, _) =>
+            {
+                if (found == IntPtr.Zero && IsWindowVisible(h) &&
+                    IsBrowserWindowClass(ClassOf(h)) && !baseline.Contains(h))
                 {
-                    PostMessageW(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                    Log("closed: " + title);
+                    found = h;
+                    return false;   // stop enumeration
                 }
                 return true;
             }, IntPtr.Zero);
+            return found;
         }
 
-        /// <summary>Look for the ad's distinctive page text in the window's accessibility tree.</summary>
-        private static bool MatchesContent(IntPtr hWnd)
+        private static string ClassOf(IntPtr h)
         {
-            try
-            {
-                var el = AutomationElement.FromHandle(hWnd);
-                if (el == null) return false;
-                foreach (var phrase in ContentMarkers)
-                {
-                    var cond = new PropertyCondition(AutomationElement.NameProperty, phrase);
-                    if (el.FindFirst(TreeScope.Descendants, cond) != null) return true;
-                }
-            }
-            catch { }
-            return false;
+            var sb = new StringBuilder(64);
+            GetClassNameW(h, sb, sb.Capacity);
+            return sb.ToString();
+        }
+
+        private static string TitleOf(IntPtr h)
+        {
+            var sb = new StringBuilder(512);
+            GetWindowTextW(h, sb, sb.Capacity);
+            return sb.ToString();
         }
 
         private static void Log(string line)

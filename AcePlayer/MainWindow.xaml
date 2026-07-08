@@ -114,17 +114,28 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    IsHitTestVisible="False" Text="Enter a source and press Play"/>
 
-        <TextBlock x:Name="StatsText" Foreground="#66FFFFFF" FontSize="12"
-                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,8"
-                   IsHitTestVisible="False" Text=""/>
-
-        <local:VolumeControl x:Name="Volume" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                             Margin="0,0,10,8"/>
-
-        <Border x:Name="TopBar" VerticalAlignment="Top" Padding="8,7">
+        <!-- bottom plate: full width, mirrors the top bar -->
+        <Border x:Name="BottomBar" VerticalAlignment="Bottom" Padding="12,9" MinHeight="56">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#E6000000" Offset="0"/>
+                    <GradientStop Color="#00000000" Offset="0"/>
+                    <GradientStop Color="#D9000000" Offset="0.4"/>
+                    <GradientStop Color="#F2000000" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <TextBlock x:Name="StatsText" Foreground="#8CFFFFFF" FontSize="12"
+                           HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                           IsHitTestVisible="False" Text=""/>
+                <local:VolumeControl x:Name="Volume" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+            </Grid>
+        </Border>
+
+        <Border x:Name="TopBar" VerticalAlignment="Top" Padding="12,9" MinHeight="56">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#F2000000" Offset="0"/>
+                    <GradientStop Color="#D9000000" Offset="0.6"/>
                     <GradientStop Color="#00000000" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
