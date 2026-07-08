@@ -1,8 +1,7 @@
 # AcePlayer
 
-A lightweight Windows player for **Ace Stream** live broadcasts that stays as close to the real
-live edge as possible, and that recovers from network hiccups instead of silently drifting further
-and further behind.
+A lightweight Windows player for **Ace Stream** live broadcasts that keeps you at the live edge and
+recovers from network hiccups instead of quietly falling behind.
 
 ## Why this exists
 
@@ -32,19 +31,28 @@ own, on a threshold you choose, rather than quietly accumulating latency forever
 - Automatic jump-to-live on a configurable lag threshold (Off, or 1 to 8 seconds). Below the
   threshold it leaves playback alone, with no constant re-syncing; once accumulated stall time
   crosses it, playback snaps back to live in a single move.
-- Closes the ad window that the ad-supported Ace engine pops open when a stream starts.
-- Fullscreen (double-click or F11) with auto-hiding controls and cursor.
+- Closes the betting-ad window the ad-supported Ace engine opens in your default browser when a
+  stream starts, whichever browser that is (Chrome, Edge, Firefox, ...).
+- VLC-style volume control (0 to 200 percent) with a mute toggle.
+- Keeps the display awake while playing, so the screensaver or sleep never interrupts a match.
+- Fullscreen (double-click or F11), a single click toggles the controls, and they auto-hide with
+  the cursor. The Play button turns into Stop while a stream is playing.
 - Portable single `.exe` (about 5 MB) with a trimmed FFmpeg build embedded, so there is nothing to
   install and no DLLs to ship alongside it.
 - Registers as the `acestream://` protocol handler and for `.acelive` / `.acestream` files (current
   user only, no administrator rights).
-- Remembers the last source and the live threshold between runs.
+- Remembers the last source, the live threshold and the volume between runs.
 
 ## Requirements
 
+AcePlayer is a front-end for the Ace Stream engine, it does not download the P2P streams itself.
+You must install **Ace Stream Media** first and have it running, otherwise there is nothing for the
+player to connect to. Get it from the official
+[Ace Stream products page](https://docs.acestream.net/products/).
+
 - Windows 10 / 11 (x64)
-- The [Ace Stream](https://acestream.org/) engine installed and running (it listens on
-  `127.0.0.1:6878`)
+- [Ace Stream Media](https://docs.acestream.net/products/) installed and running (the engine
+  listens on `127.0.0.1:6878`)
 - .NET Framework 4.8
 
 ## Usage
@@ -65,18 +73,22 @@ latency: the player cannot be fresher than the engine serves.
 
 ## The interface
 
-Everything lives in one auto-hiding top bar. The numbers below are labelled on the screenshot.
+Controls overlay the video and auto-hide. A single click toggles them, moving the mouse brings them
+back. The top bar, left to right:
 
-![AcePlayer controls](docs/ui.png)
+- **Address bar** for a content-id, an `acestream://` link, a plain URL, or a local file (with a
+  clear button)
+- **Play / Stop**: starts the source, and turns into Stop while it is playing
+- **Live**: jump to the live edge on demand
+- **Distance behind live** indicator
+- **Auto catch-up threshold** (Off, or 1 to 8 s): how far it may drift before snapping back to live
+- **Register** (gear): register AcePlayer as the `acestream://` handler
+- **Fullscreen** (also double-click, or F11)
 
-1. **Address bar** for a content-id, an `acestream://` link, a plain URL, or a local file
-2. **Clear** the address bar
-3. **Play** / restart the current source
-4. **Live**: jump to the live edge on demand
-5. **Distance behind live** (the accumulated lag indicator)
-6. **Auto catch-up threshold**: how far it may drift before jumping back to live (Off, or 1 to 8 s)
-7. **Register** AcePlayer as the `acestream://` handler
-8. **Fullscreen**
+The bottom-right corner holds a **volume control** (0 to 200 percent, with mute); the bottom-left
+shows the current frame rate and audio buffer.
+
+![AcePlayer](docs/ui.png)
 
 ## Build
 
